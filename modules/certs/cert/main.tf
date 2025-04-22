@@ -10,12 +10,11 @@ resource "local_sensitive_file" "key" {
 }
 
 resource "tls_cert_request" "csr" {
-  key_algorithm   = tls_private_key.key.algorithm
   private_key_pem = tls_private_key.key.private_key_pem
 
-  subject {
+  dns_names = var.dns_names
 
-  }
+  subject = var.subject
 }
 
 resource "tls_locally_signed_cert" "cert" {
@@ -27,11 +26,9 @@ resource "tls_locally_signed_cert" "cert" {
   is_ca_certificate     = var.is_ca_certificate
   validity_period_hours = 168
 
-  allowed_uses = [
-    "key_encipherment",
-    "digital_signature",
-    "cert_signing",
-  ]
+  set_subject_key_id = var.set_subject_key_id
+
+  allowed_uses = var.allowed_uses
 }
 
 resource "local_sensitive_file" "cert" {

@@ -14,13 +14,7 @@ resource "tls_self_signed_cert" "root_ca_cert" {
 
   is_ca_certificate = true
 
-  subject {
-    country             = "US"
-    locality            = "CA"
-    common_name         = "Rancher Root CA"
-    organization        = "Rancher Labs"
-    organizational_unit = "Rancher Labs Terraform Test Environment"
-  }
+  subject = var.subject
 
   validity_period_hours = 168
 

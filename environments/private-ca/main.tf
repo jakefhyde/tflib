@@ -110,77 +110,56 @@ resource "time_sleep" "wait_1_minute" {
 #   install_version = "v1.17.1"
 # }
 
-# TODO: move to module
-resource "tls_private_key" "ca" {
+# Todo: set subjects
+# country             = "US"
+# locality            = "CA"
+# common_name         = "Rancher Root CA"
+# organization        = "Rancher Labs"
+# organizational_unit = "Rancher Labs Terraform Test Environment"
+
+# I originally signed the ingress cert with tls_private_key.ca.private_key_pem, not sure if that was a mistake
+
+module "root_ca" {
+  source    = "../../modules/certs/root-ca"
+  prefix    = "${var.prefix}-root-ca"
   algorithm = "RSA"
+  rsa_bits  = 2048
+  subject = {
+    common_name         = "${var.prefix} Root CA"
+    organization        = "${var.prefix} Private CA Environment"
+    organizational_unit = "${var.prefix} Private CA Environment Terraform Module"
+  }
 }
 
-resource "local_sensitive_file" "ca_key" {
-  content  = tls_private_key.ca.private_key_pem
-  filename = "${path.cwd}/${var.prefix}-ca.key"
-}
-
-resource "tls_self_signed_cert" "ca_cert" {
-  private_key_pem = tls_private_key.ca.private_key_pem
-
+module "intermediate_ca" {
+  source            = "../../modules/certs/cert"
+  prefix            = "${var.prefix}-intermediate-ca"
+  algorithm         = "RSA"
+  rsa_bits          = 2048
+  write_files       = true
+  parent_ca         = module.root_ca.cert
   is_ca_certificate = true
-
-  subject {
-    country             = "US"
-    locality            = "CA"
-    common_name         = "Rancher Root CA"
-    organization        = "Rancher Labs"
-    organizational_unit = "Rancher Labs Terraform Test Environment"
+  subject = {
+    common_name         = "${var.prefix} Intermediate CA"
+    organization        = "${var.prefix} Private CA Environment"
+    organizational_unit = "${var.prefix} Private CA Environment Terraform Module"
   }
-
-  validity_period_hours = 168
-
-  allowed_uses = [
-    "digital_signature",
-    "cert_signing",
-    "crl_signing",
-  ]
 }
 
-# this is the cacerts
-resource "local_sensitive_file" "key" {
-  content  = tls_self_signed_cert.ca_cert.cert_pem
-  filename = "${path.cwd}/cacerts.pem"
-}
-
-resource "tls_private_key" "ca_ingress" {
-  algorithm = "RSA"
-}
-
-resource "local_sensitive_file" "ca_key_ingress" {
-  content  = tls_private_key.ca_ingress.private_key_pem
-  filename = "${path.cwd}/tls.key"
-}
-
-resource "tls_cert_request" "csr" {
-  private_key_pem = tls_private_key.ca_ingress.private_key_pem
-
-  # dns_names = var.dns_names
+module "ingress_cert" {
+  source      = "../../modules/certs/cert"
+  prefix      = "${var.prefix}-ingress"
+  algorithm   = "RSA"
+  rsa_bits    = 2048
+  write_files = true
+  parent_ca   = module.intermediate_ca.cert
+  subject = {
+    common_name         = "${var.prefix} Rancher Ingress"
+    organization        = "${var.prefix} Private CA Environment"
+    organizational_unit = "${var.prefix} Private CA Environment Terraform Module"
+  }
   dns_names = [module.infra.fqdn]
-
-  subject {
-    country             = "US"
-    locality            = "CA"
-    common_name         = "Rancher Cert Ingress"
-    organization        = "Rancher Labs"
-    organizational_unit = "Rancher Labs Ingress Terraform Test Environment"
-  }
-}
-
-resource "tls_locally_signed_cert" "cert" {
-  cert_request_pem   = tls_cert_request.csr.cert_request_pem
-  ca_private_key_pem = tls_private_key.ca.private_key_pem
-  ca_cert_pem        = tls_self_signed_cert.ca_cert.cert_pem
-
-  validity_period_hours = 168
-
   set_subject_key_id = true
-
   allowed_uses = [
     "digital_signature",
     "key_encipherment",
@@ -190,14 +169,7 @@ resource "tls_locally_signed_cert" "cert" {
   ]
 }
 
-resource "local_sensitive_file" "ca_cert_ingress" {
-  content  = tls_locally_signed_cert.cert.cert_pem
-  filename = "${path.cwd}/tls.crt"
-}
-
-# end todo
-
-resource "kubernetes_namespace" "cattle_system_namespace" {
+resource "kubernetes_namespace" "cattle_system" {
   depends_on = [time_sleep.wait_1_minute]
   metadata {
     name = "cattle-system"
@@ -205,29 +177,29 @@ resource "kubernetes_namespace" "cattle_system_namespace" {
 }
 
 resource "kubernetes_secret" "ca" {
-  depends_on = [kubernetes_namespace.cattle_system_namespace]
+  depends_on = [kubernetes_namespace.cattle_system]
   metadata {
     name      = "tls-ca"
-    namespace = "cattle-system"
+    namespace = kubernetes_namespace.cattle_system.metadata.name
   }
 
   data = {
-    "cacerts.pem" = local_sensitive_file.key.content
+    "cacerts.pem" = module.intermediate_ca.cert.cert_pem
   }
 }
 
 resource "kubernetes_secret" "tls" {
-  depends_on = [kubernetes_namespace.cattle_system_namespace]
+  depends_on = [kubernetes_namespace.cattle_system]
   metadata {
     name      = "tls-rancher-ingress"
-    namespace = "cattle-system"
+    namespace = kubernetes_namespace.cattle_system.metadata.name
   }
 
   type = "kubernetes.io/tls"
 
   data = {
-    "tls.crt" = local_sensitive_file.ca_cert_ingress.content
-    "tls.key" = local_sensitive_file.ca_key_ingress.content
+    "tls.crt" = module.ingress_cert.cert.cert_pem
+    "tls.key" = module.ingress_cert.cert.private_key_pem
   }
 }
 

@@ -9,10 +9,25 @@ variable "prefix" {
   description = ""
 }
 
-variable "parent_ca" {
+variable "algorithm" {
+  type        = string
+  description = ""
+}
+
+variable "rsa_bits" {
+  type        = number
+  description = ""
+}
+
+variable "subject" {
   type = object({
-    ca_key_algorithm   = string,
-    ca_private_key_pem = string,
-    ca_cert_pem        = string,
+    common_name         = string
+    country             = string
+    locality            = string
+    organization        = string
+    organizational_unit = string
+    province            = string
+    serial_number       = string
+    street_address      = string
   })
 }
