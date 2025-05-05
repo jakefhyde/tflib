@@ -104,21 +104,6 @@ resource "time_sleep" "wait_1_minute" {
   create_duration = "60s"
 }
 
-# module "cert_manager" {
-#   depends_on = [time_sleep.wait_1_minute]
-#   source          = "../../modules/helm/cert_manager"
-#   install_version = "v1.17.1"
-# }
-
-# Todo: set subjects
-# country             = "US"
-# locality            = "CA"
-# common_name         = "Rancher Root CA"
-# organization        = "Rancher Labs"
-# organizational_unit = "Rancher Labs Terraform Test Environment"
-
-# I originally signed the ingress cert with tls_private_key.ca.private_key_pem, not sure if that was a mistake
-
 module "root_ca" {
   source      = "../../modules/certs/root-ca"
   prefix      = "${var.prefix}-root-ca"
@@ -206,7 +191,6 @@ resource "kubernetes_secret" "tls" {
 
 module "rancher" {
   depends_on = [
-    # module.cert_manager,
     kubernetes_secret.ca,
     kubernetes_secret.tls,
   ]
