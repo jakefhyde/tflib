@@ -14,14 +14,23 @@ resource "tls_cert_request" "csr" {
 
   dns_names = var.dns_names
 
-  subject = var.subject
+  subject {
+    common_name         = var.subject.common_name
+    country             = var.subject.country
+    locality            = var.subject.locality
+    organization        = var.subject.organization
+    organizational_unit = var.subject.organizational_unit
+    province            = var.subject.province
+    serial_number       = var.subject.serial_number
+    street_address      = var.subject.street_address
+  }
 }
 
 resource "tls_locally_signed_cert" "cert" {
   cert_request_pem = tls_cert_request.csr.cert_request_pem
 
   ca_private_key_pem = var.parent_ca.private_key_pem
-  ca_cert_pem        = var.parent_ca.root_ca.cert_pem
+  ca_cert_pem        = var.parent_ca.cert_pem
 
   is_ca_certificate     = var.is_ca_certificate
   validity_period_hours = 168

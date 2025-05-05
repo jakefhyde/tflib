@@ -1,6 +1,7 @@
 resource "random_password" "bootstrap_password" {
-  count  = var.bootstrap_password != "" ? 0 : 1
-  length = 48
+  count            = var.bootstrap_password != "" ? 0 : 1
+  length           = 48
+  override_special = "!@#$%&*()-_=+{}<>:"
 }
 
 locals {

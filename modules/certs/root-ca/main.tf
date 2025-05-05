@@ -14,7 +14,16 @@ resource "tls_self_signed_cert" "root_ca_cert" {
 
   is_ca_certificate = true
 
-  subject = var.subject
+  subject {
+    common_name         = var.subject.common_name
+    country             = var.subject.country
+    locality            = var.subject.locality
+    organization        = var.subject.organization
+    organizational_unit = var.subject.organizational_unit
+    province            = var.subject.province
+    serial_number       = var.subject.serial_number
+    street_address      = var.subject.street_address
+  }
 
   validity_period_hours = 168
 

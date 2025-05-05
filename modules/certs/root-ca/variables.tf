@@ -21,13 +21,13 @@ variable "rsa_bits" {
 
 variable "subject" {
   type = object({
-    common_name         = string
-    country             = string
-    locality            = string
-    organization        = string
-    organizational_unit = string
-    province            = string
-    serial_number       = string
-    street_address      = string
+    common_name = optional(string)
+    country = optional(string)
+    locality = optional(string)
+    organization = optional(string)
+    organizational_unit = optional(string)
+    province = optional(string)
+    serial_number = optional(string)
+    street_address = optional(list(string))
   })
 }

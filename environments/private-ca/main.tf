@@ -120,10 +120,11 @@ resource "time_sleep" "wait_1_minute" {
 # I originally signed the ingress cert with tls_private_key.ca.private_key_pem, not sure if that was a mistake
 
 module "root_ca" {
-  source    = "../../modules/certs/root-ca"
-  prefix    = "${var.prefix}-root-ca"
-  algorithm = "RSA"
-  rsa_bits  = 2048
+  source      = "../../modules/certs/root-ca"
+  prefix      = "${var.prefix}-root-ca"
+  algorithm   = "RSA"
+  rsa_bits    = 2048
+  write_files = true
   subject = {
     common_name         = "${var.prefix} Root CA"
     organization        = "${var.prefix} Private CA Environment"
@@ -180,7 +181,7 @@ resource "kubernetes_secret" "ca" {
   depends_on = [kubernetes_namespace.cattle_system]
   metadata {
     name      = "tls-ca"
-    namespace = kubernetes_namespace.cattle_system.metadata.name
+    namespace = kubernetes_namespace.cattle_system.metadata[0].name
   }
 
   data = {
@@ -192,7 +193,7 @@ resource "kubernetes_secret" "tls" {
   depends_on = [kubernetes_namespace.cattle_system]
   metadata {
     name      = "tls-rancher-ingress"
-    namespace = kubernetes_namespace.cattle_system.metadata.name
+    namespace = kubernetes_namespace.cattle_system.metadata[0].name
   }
 
   type = "kubernetes.io/tls"
